@@ -50,6 +50,20 @@ class GradeScheme {
     ],
   );
 
+  // Default VTU Grading Scheme
+  static const GradeScheme defaultVTU = GradeScheme(
+    boundaries: [
+      GradeBoundary(minMarks: 90.0, maxMarks: 100.0, gradeLetter: 'O', gradePoints: 10),
+      GradeBoundary(minMarks: 80.0, maxMarks: 89.99, gradeLetter: 'A+', gradePoints: 9),
+      GradeBoundary(minMarks: 70.0, maxMarks: 79.99, gradeLetter: 'A', gradePoints: 8),
+      GradeBoundary(minMarks: 60.0, maxMarks: 69.99, gradeLetter: 'B+', gradePoints: 7),
+      GradeBoundary(minMarks: 55.0, maxMarks: 59.99, gradeLetter: 'B', gradePoints: 6),
+      GradeBoundary(minMarks: 50.0, maxMarks: 54.99, gradeLetter: 'C', gradePoints: 5),
+      GradeBoundary(minMarks: 40.0, maxMarks: 49.99, gradeLetter: 'P', gradePoints: 4),
+      GradeBoundary(minMarks: 0.0, maxMarks: 39.99, gradeLetter: 'F', gradePoints: 0),
+    ],
+  );
+
   GradeBoundary getBoundary(double marks) {
     // Sort boundaries in descending order of minMarks to ensure correct matching
     final sorted = List<GradeBoundary>.from(boundaries)

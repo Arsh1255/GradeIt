@@ -3,8 +3,15 @@ import '../core/theme.dart';
 
 class MeshGradientBackground extends StatelessWidget {
   final Widget child;
+  final Widget? bottomNavigationBar;
+  final Widget? floatingActionButton;
 
-  const MeshGradientBackground({super.key, required this.child});
+  const MeshGradientBackground({
+    super.key,
+    required this.child,
+    this.bottomNavigationBar,
+    this.floatingActionButton,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -13,6 +20,8 @@ class MeshGradientBackground extends StatelessWidget {
       body: SafeArea(
         child: child,
       ),
+      bottomNavigationBar: bottomNavigationBar,
+      floatingActionButton: floatingActionButton,
     );
   }
 }

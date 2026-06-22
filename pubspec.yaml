@@ -2,7 +2,7 @@ name: grade_it
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -41,6 +41,8 @@ dependencies:
   path_provider: ^2.1.1
   pdf: ^3.10.8
   url_launcher: ^6.2.5
+  file_picker: ^8.0.3
+  lucide_icons: ^0.257.0
 
 dev_dependencies:
   flutter_test:
@@ -50,9 +52,10 @@ dev_dependencies:
   flutter_launcher_icons: ^0.13.1
 
 flutter_launcher_icons:
-  android: "launcher_icon"
+  android: true
   ios: true
   image_path: "assets/app_icon.png"
+
   # Note: Convert the SVG to a PNG (e.g., 512x512) and save as assets/app_icon.png before running the command.
 
 # For information on the generic Dart part of this file, see the
@@ -60,11 +63,10 @@ flutter_launcher_icons:
 
 # The following section is specific to Flutter packages.
 flutter:
-
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - google_fonts/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

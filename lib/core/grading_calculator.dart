@@ -28,7 +28,7 @@ class GradingCalculator {
         score = subject.currentScore;
       }
 
-      final gradePoints = Subject.getGradePoints(score, gradeScheme);
+      final gradePoints = gradeScheme.getBoundary(score).gradePoints;
       weightedGradePointsSum += (gradePoints * subject.credits);
       totalCredits += subject.credits;
     }

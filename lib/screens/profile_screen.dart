@@ -7,6 +7,7 @@ import '../models/user_profile.dart';
 import '../services/academic_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/mesh_gradient_background.dart';
+import '../widgets/academic_data_helper.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -20,12 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   
   late TextEditingController _nameController;
   late TextEditingController _usnController;
-  late TextEditingController _sem1SgpaController;
-  late TextEditingController _sem1CreditsController;
-  late TextEditingController _sem2SgpaController;
-  late TextEditingController _sem2CreditsController;
-  late TextEditingController _sem3SgpaController;
-  late TextEditingController _sem3CreditsController;
+  final List<Map<String, TextEditingController>> _semControllers = [];
 
   @override
   void initState() {
@@ -35,39 +31,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     _nameController = TextEditingController(text: profile.name);
     _usnController = TextEditingController(text: profile.usn);
-    _sem1SgpaController = TextEditingController(text: profile.sem1Sgpa.toString());
-    _sem1CreditsController = TextEditingController(text: profile.sem1Credits.toString());
-    _sem2SgpaController = TextEditingController(text: profile.sem2Sgpa.toString());
-    _sem2CreditsController = TextEditingController(text: profile.sem2Credits.toString());
-    _sem3SgpaController = TextEditingController(text: profile.sem3Sgpa.toString());
-    _sem3CreditsController = TextEditingController(text: profile.sem3Credits.toString());
+    
+    for (final sem in profile.priorSemesters) {
+      _semControllers.add({
+        'sgpa': TextEditingController(text: sem.sgpa.toString()),
+        'credits': TextEditingController(text: sem.credits.toString()),
+      });
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _usnController.dispose();
-    _sem1SgpaController.dispose();
-    _sem1CreditsController.dispose();
-    _sem2SgpaController.dispose();
-    _sem2CreditsController.dispose();
-    _sem3SgpaController.dispose();
-    _sem3CreditsController.dispose();
+    for (final ctrl in _semControllers) {
+      ctrl['sgpa']!.dispose();
+      ctrl['credits']!.dispose();
+    }
     super.dispose();
   }
 
   void _saveProfile(AcademicProvider provider) {
     if (!_formKey.currentState!.validate()) return;
 
+    final updatedPriorSemesters = _semControllers.map((ctrl) {
+      return PriorSemester(
+        sgpa: double.tryParse(ctrl['sgpa']!.text) ?? 0.0,
+        credits: int.tryParse(ctrl['credits']!.text) ?? 20,
+      );
+    }).toList();
+
     final updatedProfile = UserProfile(
       name: _nameController.text.trim(),
       usn: _usnController.text.trim(),
-      sem1Sgpa: double.tryParse(_sem1SgpaController.text) ?? 0.0,
-      sem1Credits: int.tryParse(_sem1CreditsController.text) ?? 20,
-      sem2Sgpa: double.tryParse(_sem2SgpaController.text) ?? 0.0,
-      sem2Credits: int.tryParse(_sem2CreditsController.text) ?? 20,
-      sem3Sgpa: double.tryParse(_sem3SgpaController.text) ?? 0.0,
-      sem3Credits: int.tryParse(_sem3CreditsController.text) ?? 20,
+      priorSemesters: updatedPriorSemesters,
     );
 
     provider.updateUserProfile(updatedProfile);
@@ -255,15 +252,122 @@ class _ProfileScreenState extends State<ProfileScreen> {
                      ),
                      const SizedBox(height: 20),
 
-                     // Semester Cards
-                     _buildSemesterSection('Semester 1 Baseline', _sem1SgpaController, _sem1CreditsController, AppTheme.subjectBgColor('ADA')),
-                    const SizedBox(height: 12),
-                    _buildSemesterSection('Semester 2 Baseline', _sem2SgpaController, _sem2CreditsController, AppTheme.subjectBgColor('OS')),
-                    const SizedBox(height: 12),
-                    _buildSemesterSection('Semester 3 Baseline', _sem3SgpaController, _sem3CreditsController, AppTheme.subjectBgColor('SE')),
-                    const SizedBox(height: 24),
+                     // Semester Cards Title & Add Button
+                     Padding(
+                       padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                       child: Row(
+                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                         children: [
+                           Text(
+                             'Historical Semesters Baseline',
+                             style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textColorPrimary),
+                           ),
+                           IconButton(
+                             icon: const Icon(Icons.add_circle_outline_rounded, color: AppTheme.primaryBlue, size: 20),
+                             onPressed: () {
+                               HapticFeedback.lightImpact();
+                               setState(() {
+                                 _semControllers.add({
+                                   'sgpa': TextEditingController(text: '8.0'),
+                                   'credits': TextEditingController(text: '20'),
+                                 });
+                               });
+                             },
+                             tooltip: 'Add Semester',
+                           ),
+                         ],
+                       ),
+                     ),
+                     const SizedBox(height: 4),
 
-                    // Reset Data Button (Material Red Button)
+                     // Dynamic Semester Cards List
+                     Column(
+                       children: List.generate(_semControllers.length, (index) {
+                         final ctrl = _semControllers[index];
+                         final semNumber = index + 1;
+                         final listColors = ['ADA', 'OS', 'SE'];
+                         final colorName = listColors[index % listColors.length];
+                         
+                         return Column(
+                           children: [
+                             _buildDynamicSemesterSection(
+                               index: index,
+                               title: 'Semester $semNumber Baseline',
+                               sgpaController: ctrl['sgpa']!,
+                               creditsController: ctrl['credits']!,
+                               sectionColor: AppTheme.subjectBgColor(colorName),
+                               onRemove: () {
+                                 HapticFeedback.lightImpact();
+                                 setState(() {
+                                   final removed = _semControllers.removeAt(index);
+                                   removed['sgpa']!.dispose();
+                                   removed['credits']!.dispose();
+                                 });
+                                },
+                             ),
+                             const SizedBox(height: 12),
+                           ],
+                         );
+                       }),
+                     ),
+                     const SizedBox(height: 12),
+
+                                          const SizedBox(height: 20),
+                      Text(
+                        'Academic Data Sync',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textColorPrimary),
+                      ),
+                      const SizedBox(height: 4),
+                      GlassCard(
+                        child: Column(
+                          children: [
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: CircleAvatar(
+                                backgroundColor: AppTheme.primaryBlue.withOpacity(0.12),
+                                child: const Icon(Icons.file_upload_outlined, color: AppTheme.primaryBlue),
+                              ),
+                              title: Text(
+                                'Import Shared Template (.gradeit)',
+                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppTheme.textColorPrimary),
+                              ),
+                              subtitle: Text(
+                                'Load a course configuration shared by a classmate.',
+                                style: TextStyle(fontSize: 11, color: AppTheme.textColorSecondary),
+                              ),
+                              trailing: Icon(Icons.chevron_right_rounded, color: AppTheme.textColorSecondary),
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                AcademicDataHelper.showImportDialog(context, provider);
+                              },
+                            ),
+                            const Divider(height: 16),
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: CircleAvatar(
+                                backgroundColor: AppTheme.accentTeal.withOpacity(0.12),
+                                child: const Icon(Icons.share_rounded, color: AppTheme.accentTeal),
+                              ),
+                              title: Text(
+                                'Share & Export Standing',
+                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppTheme.textColorPrimary),
+                              ),
+                              subtitle: Text(
+                                'Share PDF report, Excel sheets, or course structure.',
+                                style: TextStyle(fontSize: 11, color: AppTheme.textColorSecondary),
+                              ),
+                              trailing: Icon(Icons.chevron_right_rounded, color: AppTheme.textColorSecondary),
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                AcademicDataHelper.showExportBottomSheet(context, provider);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                     // Reset Data Button (Material Red Button)
                     GestureDetector(
                       onTap: () {
                         showDialog(
@@ -379,26 +483,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSemesterSection(String title, TextEditingController sgpaController, TextEditingController creditsController, Color sectionColor) {
+  Widget _buildDynamicSemesterSection({
+    required int index,
+    required String title,
+    required TextEditingController sgpaController,
+    required TextEditingController creditsController,
+    required Color sectionColor,
+    required VoidCallback onRemove,
+  }) {
     return GlassCard(
       glowColor: Theme.of(context).colorScheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: sectionColor,
-                  shape: BoxShape.circle,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: sectionColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    title,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textColorPrimary),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textColorPrimary),
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline_rounded, color: AppTheme.accentRed, size: 18),
+                onPressed: onRemove,
+                tooltip: 'Remove Semester',
               ),
             ],
           ),

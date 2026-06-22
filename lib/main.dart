@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/theme.dart';
 import 'services/academic_provider.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() {
   // Ensure Flutter engine is initialized
@@ -49,10 +50,19 @@ class GradeItApp extends StatelessWidget {
             title: 'Grade It',
             debugShowCheckedModeBanner: false,
             theme: provider.isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
-            home: const DashboardScreen(),
+            home: provider.isLoading
+                ? const Scaffold(
+                    body: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                : provider.hasConfiguredSemester
+                    ? const DashboardScreen()
+                    : const OnboardingScreen(),
           );
         },
       ),
     );
   }
 }
+
