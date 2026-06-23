@@ -61,7 +61,7 @@ class _SemesterWizardScreenState extends State<SemesterWizardScreen> {
   }
 
   void _nextStep() {
-    if (_currentStep < 2) {
+    if (_currentStep < 3) {
       // Validation for Step 1
       if (_currentStep == 0 && _semNameController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -73,6 +73,13 @@ class _SemesterWizardScreenState extends State<SemesterWizardScreen> {
       if (_currentStep == 1 && _subjects.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please add at least one subject')),
+        );
+        return;
+      }
+      // Validation for Step 3 — all subjects must have valid components
+      if (_currentStep == 2 && !_isAllSubjectsValid()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All subjects must have components totaling exactly 100 marks.')),
         );
         return;
       }
@@ -276,6 +283,7 @@ class _SemesterWizardScreenState extends State<SemesterWizardScreen> {
                   _buildStep1Details(),
                   _buildStep2Subjects(),
                   _buildStep3Components(),
+                  _buildStep4Review(),
                 ],
               ),
             ),
@@ -299,6 +307,8 @@ class _SemesterWizardScreenState extends State<SemesterWizardScreen> {
           _buildStepBubble(1, 'Subjects'),
           _buildStepLine(1),
           _buildStepBubble(2, 'Components'),
+          _buildStepLine(2),
+          _buildStepBubble(3, 'Review'),
         ],
       ),
     );
@@ -853,101 +863,61 @@ class _SemesterWizardScreenState extends State<SemesterWizardScreen> {
     );
   }
 
-  void _openCustomComponentMixEditor(String code) {
-    final list = _subjectCustomComponents[code] ?? [];
-    showDialog(
+  Future<void> _openCustomComponentMixEditor(String code) async {
+    List<GenericComponent> workingList = (_subjectCustomComponents[code] ?? []).map((c) => c.copyWith()).toList();
+
+    final Map<String, TextEditingController> nameCtrl = {};
+    final Map<String, TextEditingController> maxCtrl  = {};
+    final Map<String, TextEditingController> wtCtrl   = {};
+
+    for (final c in workingList) {
+      nameCtrl[c.id] = TextEditingController(text: c.name);
+      maxCtrl [c.id] = TextEditingController(text: c.maxMarks.toStringAsFixed(0));
+      wtCtrl  [c.id] = TextEditingController(text: c.weight.toStringAsFixed(0));
+    }
+
+    final List<GenericComponent>? result = await showDialog<List<GenericComponent>>(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
+      builder: (dialogCtx) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final double currentSum = _getComponentsTotalWeight(list);
+          builder: (dialogCtx, setDialogState) {
+            final double total = _getComponentsTotalWeight(workingList);
             return Dialog(
               backgroundColor: AppTheme.cardColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Container(
-                constraints: const BoxConstraints(maxWidth: 450),
+                constraints: const BoxConstraints(maxWidth: 450, maxHeight: 520),
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Configure Custom Mix ($code)',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textColorPrimary),
-                      textAlign: TextAlign.center,
-                    ),
+                    Text('Configure Custom Mix ($code)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textColorPrimary), textAlign: TextAlign.center),
                     const SizedBox(height: 8),
-                    Text(
-                      'Total weight must equal 100. Current: ${currentSum.toStringAsFixed(0)}',
-                      style: TextStyle(fontSize: 10, color: currentSum == 100 ? AppTheme.accentGreen : AppTheme.accentRed),
-                      textAlign: TextAlign.center,
-                    ),
+                    Text('Total weight must equal 100. Current: ${total.toStringAsFixed(0)}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: total == 100 ? AppTheme.accentGreen : AppTheme.accentRed), textAlign: TextAlign.center),
                     const SizedBox(height: 16),
                     Expanded(
-                      child: list.isEmpty
-                          ? Center(child: Text('No custom components added.', style: TextStyle(color: AppTheme.textColorSecondary, fontSize: 11)))
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: list.length,
-                              itemBuilder: (context, index) {
-                                final c = list[index];
-                                return Padding(
-                                  key: ValueKey(c.id),
-                                  padding: const EdgeInsets.only(bottom: 8.0),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 2,
-                                        child: TextFormField(
-                                          initialValue: c.name,
-                                          style: TextStyle(color: AppTheme.textColorPrimary, fontSize: 11),
-                                          decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder(), contentPadding: EdgeInsets.all(4)),
-                                          onChanged: (val) {
-                                            list[index] = c.copyWith(name: val);
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: TextFormField(
-                                          initialValue: c.maxMarks.toStringAsFixed(0),
-                                          keyboardType: TextInputType.number,
-                                          style: TextStyle(color: AppTheme.textColorPrimary, fontSize: 11),
-                                          decoration: const InputDecoration(labelText: 'Max', border: OutlineInputBorder(), contentPadding: EdgeInsets.all(4)),
-                                          onChanged: (val) {
-                                            final parsed = double.tryParse(val) ?? 10;
-                                            list[index] = c.copyWith(maxMarks: parsed);
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: TextFormField(
-                                          initialValue: c.weight.toStringAsFixed(0),
-                                          keyboardType: TextInputType.number,
-                                          style: TextStyle(color: AppTheme.textColorPrimary, fontSize: 11),
-                                          decoration: const InputDecoration(labelText: 'Weight', border: OutlineInputBorder(), contentPadding: EdgeInsets.all(4)),
-                                          onChanged: (val) {
-                                            final parsed = double.tryParse(val) ?? 10;
-                                            list[index] = c.copyWith(weight: parsed);
-                                            setDialogState(() {});
-                                          },
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: Icon(Icons.delete_outline, color: AppTheme.accentRed.withOpacity(0.8), size: 16),
-                                        onPressed: () {
-                                          setDialogState(() {
-                                            list.removeAt(index);
-                                          });
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
+                      child: ListView.builder(
+                        itemCount: workingList.length,
+                        itemBuilder: (_, i) {
+                          final c = workingList[i];
+                          return Padding(
+                            key: ValueKey(c.id),
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                Expanded(flex: 2, child: TextField(controller: nameCtrl[c.id], style: TextStyle(color: AppTheme.textColorPrimary, fontSize: 11), decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder(), contentPadding: EdgeInsets.all(4)), onChanged: (v) => workingList[i] = workingList[i].copyWith(name: v))),
+                                const SizedBox(width: 4),
+                                Expanded(child: TextField(controller: maxCtrl[c.id], keyboardType: TextInputType.number, style: TextStyle(color: AppTheme.textColorPrimary, fontSize: 11), decoration: const InputDecoration(labelText: 'Max', border: OutlineInputBorder(), contentPadding: EdgeInsets.all(4)), onChanged: (v) => workingList[i] = workingList[i].copyWith(maxMarks: double.tryParse(v) ?? 10))),
+                                const SizedBox(width: 4),
+                                Expanded(child: TextField(controller: wtCtrl[c.id], keyboardType: TextInputType.number, style: TextStyle(color: AppTheme.textColorPrimary, fontSize: 11), decoration: const InputDecoration(labelText: 'Weight', border: OutlineInputBorder(), contentPadding: EdgeInsets.all(4)), onChanged: (v) { workingList[i] = workingList[i].copyWith(weight: double.tryParse(v) ?? 10); setDialogState(() {}); })),
+                                IconButton(icon: Icon(Icons.delete_outline, color: AppTheme.accentRed.withOpacity(0.8), size: 16), onPressed: () => setDialogState(() => workingList.removeAt(i))),
+                              ],
                             ),
+                          );
+                        },
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -956,27 +926,19 @@ class _SemesterWizardScreenState extends State<SemesterWizardScreen> {
                         TextButton.icon(
                           onPressed: () {
                             setDialogState(() {
-                              list.add(
-                                GenericComponent(
-                                  id: 'custom_${DateTime.now().millisecondsSinceEpoch}_${list.length}',
-                                  name: 'Component ${list.length + 1}',
-                                  type: 'standalone',
-                                  maxMarks: 10,
-                                  weight: 10,
-                                ),
-                              );
+                              final newId = 'comp_${DateTime.now().millisecondsSinceEpoch}';
+                              final newComp = GenericComponent(id: newId, name: 'Component ${workingList.length + 1}', type: 'standalone', maxMarks: 10, weight: 10);
+                              workingList.add(newComp);
+                              nameCtrl[newId] = TextEditingController(text: newComp.name);
+                              maxCtrl [newId] = TextEditingController(text: '10');
+                              wtCtrl  [newId] = TextEditingController(text: '10');
                             });
                           },
                           icon: const Icon(Icons.add, size: 14),
                           label: const Text('Add Component', style: TextStyle(fontSize: 11)),
                         ),
                         ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _subjectCustomComponents[code] = list;
-                            });
-                            Navigator.pop(context);
-                          },
+                          onPressed: () => Navigator.pop(dialogCtx, List<GenericComponent>.from(workingList)),
                           style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue, foregroundColor: Colors.white),
                           child: const Text('Done'),
                         ),
@@ -989,6 +951,361 @@ class _SemesterWizardScreenState extends State<SemesterWizardScreen> {
           },
         );
       },
+    );
+
+    // CRITICAL FIX: showDialog's future resolves IMMEDIATELY when Navigator.pop is called,
+    // but the dialog's exit animation takes around ~250ms to finish.
+    // If we call setState or dispose controllers while it's still animating out,
+    // the animating dialog will try to read disposed controllers OR throw dependents.isEmpty.
+    // We MUST wait for the animation to fully complete before cleaning up and rebuilding parent.
+    await Future.delayed(const Duration(milliseconds: 350));
+
+    for (final c in nameCtrl.values) c.dispose();
+    for (final c in maxCtrl.values)  c.dispose();
+    for (final c in wtCtrl.values)   c.dispose();
+
+    if (result != null && mounted) {
+      setState(() => _subjectCustomComponents[code] = result);
+    }
+  }
+
+  // --- STEP 4: REVIEW & CONFIRM ---
+  Widget _buildStep4Review() {
+    final totalCredits = _subjects.fold(0, (sum, s) => sum + s.credits);
+    final schemeName = _gradeSchemePreset == 'BMSCE'
+        ? 'BMSCE Standard'
+        : _gradeSchemePreset == 'VTU'
+            ? 'VTU Standard'
+            : 'Custom Scheme';
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Header Banner ──────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppTheme.primaryBlue.withOpacity(0.15), AppTheme.accentTeal.withOpacity(0.10)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.checklist_rounded, color: AppTheme.primaryBlue, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Review Your Semester',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.textColorPrimary),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Everything looks good? Hit "Confirm & Create" below.',
+                        style: TextStyle(fontSize: 10, color: AppTheme.textColorSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Semester Metadata Card ─────────────────────────────────
+          _reviewSection(
+            title: 'Semester Details',
+            icon: Icons.school_rounded,
+            child: Column(
+              children: [
+                _reviewRow('Semester Name', _semNameController.text.trim()),
+                if (_collegeController.text.trim().isNotEmpty)
+                  _reviewRow('College', _collegeController.text.trim()),
+                if (_branchController.text.trim().isNotEmpty)
+                  _reviewRow('Branch', _branchController.text.trim()),
+                _reviewRow('Total Credits', '$totalCredits cr'),
+                _reviewRow('Subjects', '${_subjects.length} subjects'),
+                _reviewRow('Grade Scheme', schemeName),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Per-Subject Component Breakdown ───────────────────────
+          _reviewSection(
+            title: 'Subject & Component Breakdown',
+            icon: Icons.grid_view_rounded,
+            child: Column(
+              children: _subjects.map((s) {
+                final template = _subjectTemplates[s.code] ?? 'integrated';
+                final comps = _getComponentsForTemplate(s.code, template);
+                final totalWeight = _getComponentsTotalWeight(comps);
+                final isValid = (totalWeight - 100.0).abs() < 0.01;
+                final templateLabel = {
+                  'integrated': 'Integrated',
+                  'theoryA': 'Theory A',
+                  'theoryB': 'Theory B',
+                  'practical': 'Practical',
+                  'external': 'External',
+                  'custom': 'Custom',
+                }[template] ?? template;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.cardColor.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isValid
+                          ? AppTheme.accentGreen.withOpacity(0.3)
+                          : AppTheme.accentRed.withOpacity(0.4),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Subject header row
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: AppTheme.subjectBgColor(s.code, s.name),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(11),
+                            topRight: Radius.circular(11),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    s.name,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.subjectTextColor(s.code, s.name),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${s.code} · ${s.credits} Credits · $templateLabel',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: AppTheme.subjectTextColor(s.code, s.name).withOpacity(0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isValid
+                                    ? AppTheme.accentGreen.withOpacity(0.15)
+                                    : AppTheme.accentRed.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isValid ? Icons.check_circle_rounded : Icons.warning_rounded,
+                                    size: 11,
+                                    color: isValid ? AppTheme.accentGreen : AppTheme.accentRed,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${totalWeight.toStringAsFixed(0)}/100',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: isValid ? AppTheme.accentGreen : AppTheme.accentRed,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Component table header
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        color: AppTheme.borderColor.withOpacity(0.08),
+                        child: Row(
+                          children: [
+                            Expanded(flex: 3, child: Text('Component', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textColorSecondary))),
+                            Expanded(child: Text('Type', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textColorSecondary))),
+                            Expanded(child: Text('Max', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textColorSecondary), textAlign: TextAlign.center)),
+                            Expanded(child: Text('Weight', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textColorSecondary), textAlign: TextAlign.right)),
+                          ],
+                        ),
+                      ),
+                      // Component rows (flatten grouped children too)
+                      ...comps.expand((c) => _flattenComponent(c)).map((row) {
+                        return Container(
+                          padding: EdgeInsets.fromLTRB(row.isChild ? 20 : 12, 7, 12, 7),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              top: BorderSide(color: AppTheme.borderColor.withOpacity(0.2)),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: Row(
+                                  children: [
+                                    if (row.isChild)
+                                      Padding(
+                                        padding: const EdgeInsets.only(right: 4),
+                                        child: Icon(Icons.subdirectory_arrow_right_rounded,
+                                            size: 11, color: AppTheme.textColorSecondary),
+                                      ),
+                                    Expanded(
+                                      child: Text(
+                                        row.name,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: row.isChild ? FontWeight.normal : FontWeight.w600,
+                                          color: AppTheme.textColorPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: row.isGrouped
+                                        ? AppTheme.accentTeal.withOpacity(0.1)
+                                        : AppTheme.primaryBlue.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    row.isGrouped ? 'Group' : 'Exam',
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                      color: row.isGrouped ? AppTheme.accentTeal : AppTheme.primaryBlue,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  row.maxMarks > 0 ? '${row.maxMarks.toStringAsFixed(0)}' : '—',
+                                  style: TextStyle(fontSize: 10, color: AppTheme.textColorSecondary),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  row.weight > 0 ? '${row.weight.toStringAsFixed(0)}%' : '—',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textColorPrimary,
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Helper: flatten grouped components into a single list for the review table
+  List<_ReviewComponentRow> _flattenComponent(GenericComponent c, {bool isChild = false}) {
+    if (c.type == 'grouped') {
+      return [
+        _ReviewComponentRow(name: '${c.name} (Best ${c.selectionRule})', isChild: isChild, isGrouped: true, maxMarks: 0, weight: c.weight),
+        ...c.children.expand((child) => _flattenComponent(child, isChild: true)),
+      ];
+    }
+    return [_ReviewComponentRow(name: c.name, isChild: isChild, isGrouped: false, maxMarks: c.maxMarks, weight: c.weight)];
+  }
+
+  Widget _reviewSection({required String title, required IconData icon, required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.borderColor.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Section header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.borderColor.withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(15),
+                topRight: Radius.circular(15),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 14, color: AppTheme.primaryBlue),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textColorPrimary),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: child,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _reviewRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 11, color: AppTheme.textColorSecondary)),
+          Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textColorPrimary)),
+        ],
+      ),
     );
   }
 
@@ -1104,6 +1421,7 @@ class _SemesterWizardScreenState extends State<SemesterWizardScreen> {
   }
 
   Widget _buildBottomButtons() {
+    final isLastStep = _currentStep == 3;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
       child: Row(
@@ -1123,16 +1441,39 @@ class _SemesterWizardScreenState extends State<SemesterWizardScreen> {
           ElevatedButton(
             onPressed: _nextStep,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue,
+              backgroundColor: isLastStep ? AppTheme.accentGreen : AppTheme.primaryBlue,
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: Text(_currentStep == 2 ? 'Finish & Launch' : 'Next'),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isLastStep) ...[const Icon(Icons.check_rounded, size: 16), const SizedBox(width: 6)],
+                Text(isLastStep ? 'Confirm & Create Semester' : 'Next →'),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+/// Simple data holder for the review screen component table rows.
+class _ReviewComponentRow {
+  final String name;
+  final bool isChild;
+  final bool isGrouped;
+  final double maxMarks;
+  final double weight;
+
+  const _ReviewComponentRow({
+    required this.name,
+    required this.isChild,
+    required this.isGrouped,
+    required this.maxMarks,
+    required this.weight,
+  });
 }

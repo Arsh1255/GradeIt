@@ -194,7 +194,7 @@ class SubjectDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'PREDICTED TOTAL MARKS',
+                  'YOUR CURRENT SCORE',
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
@@ -347,9 +347,9 @@ class SubjectDetailScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStatIndicator('Floor (Min)', subject.minPossibleScore.toStringAsFixed(1), activeColor.withOpacity(0.4)),
-              _buildStatIndicator('Simulated', subject.predictedScore.toStringAsFixed(1), activeColor),
-              _buildStatIndicator('Ceiling (Max)', subject.maxPossibleScore.toStringAsFixed(1), activeColor.withOpacity(0.8)),
+              _buildStatIndicator('Worst Case', subject.minPossibleScore.toStringAsFixed(1), activeColor.withOpacity(0.4)),
+              _buildStatIndicator('Current Score', subject.predictedScore.toStringAsFixed(1), activeColor),
+              _buildStatIndicator('Best Case', subject.maxPossibleScore.toStringAsFixed(1), activeColor.withOpacity(0.8)),
             ],
           ),
         ],
@@ -444,7 +444,7 @@ class SubjectDetailScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'PREDICTED SGPA CONTRIBUTION',
+                        'YOUR SGPA CONTRIBUTION',
                         style: TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.bold,
@@ -531,7 +531,7 @@ class SubjectDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '(${subject.marksPermanentlyLost.toStringAsFixed(1)} marks lost)',
+                          '(${subject.marksPermanentlyLost.toStringAsFixed(1)} marks already gone)',
                           style: TextStyle(
                             fontSize: 8,
                             color: AppTheme.textColorSecondary,
@@ -563,7 +563,7 @@ class SubjectDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '(${subject.maxPossibleScore.toStringAsFixed(1)}% achievable)',
+                          '(${subject.maxPossibleScore.toStringAsFixed(1)}% still possible)',
                           style: TextStyle(
                             fontSize: 8,
                             color: AppTheme.textColorSecondary,
@@ -585,7 +585,7 @@ class SubjectDetailScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Subject Max Achievable',
+                          'Best Score Still Possible',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -609,7 +609,7 @@ class SubjectDetailScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Predicted Score & GP',
+                          'Your Score & Grade Points',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,

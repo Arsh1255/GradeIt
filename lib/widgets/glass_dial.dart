@@ -124,7 +124,7 @@ class _GlassDialState extends State<GlassDial> with TickerProviderStateMixin {
                 ),
                 const SizedBox(height: 1),
                 Text(
-                  'MAX: ${_maxAnimation.value.toStringAsFixed(2)}',
+                  'BEST: ${_maxAnimation.value.toStringAsFixed(2)}',
                   style: TextStyle(
                     color: AppTheme.textColorSecondary,
                     fontSize: 9,

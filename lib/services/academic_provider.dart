@@ -210,7 +210,7 @@ class AcademicProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    _userProfile = await _storageService.loadUserProfile() ?? UserProfile();
+    _userProfile = await _storageService.loadUserProfile();
     _semester = await _storageService.loadSemester();
     _isDarkMode = await _storageService.loadDarkMode();
     

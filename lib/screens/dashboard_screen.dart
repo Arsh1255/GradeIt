@@ -1,7 +1,13 @@
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:file_picker/file_picker.dart';
 import '../core/theme.dart';
 import '../models/subject.dart';
 import '../models/semester.dart';
@@ -758,34 +764,6 @@ class DashboardScreen extends StatelessWidget {
           backgroundColor: AppTheme.accentTeal,
         ),
       );
-      // Show one-time CGPA setup alert
-      SharedPreferences.getInstance().then((prefs) {
-        if (prefs.getBool('has_shown_cgpa_alert') != true) {
-          prefs.setBool('has_shown_cgpa_alert', true);
-          if (context.mounted) {
-            showDialog(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                backgroundColor: AppTheme.cardColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                title: Text('Calculate Effective CGPA?',
-                    style: TextStyle(color: AppTheme.textColorPrimary, fontWeight: FontWeight.bold)),
-                content: Text(
-                  'Head to the Profile screen to set your previous semester SGPA and credits. This allows GradeIt to calculate your accurate cumulative CGPA!',
-                  style: TextStyle(color: AppTheme.textColorSecondary, fontSize: 13),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Got it!',
-                        style: TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            );
-          }
-        }
-      });
     }
   }
 
@@ -953,8 +931,17 @@ class DashboardScreen extends StatelessWidget {
                 } else if (preset == 'VTU') {
                   _boundaries = List<GradeBoundary>.from(GradeScheme.defaultVTU.boundaries);
                 }
+                
+                // Sync controllers list length with boundaries to prevent RangeErrors
+                while (controllers.length < _boundaries.length) {
+                  controllers.add(TextEditingController());
+                }
+                while (controllers.length > _boundaries.length) {
+                  controllers.removeLast().dispose();
+                }
+
                 // Update controller texts to match
-                for (int i = 0; i < _boundaries.length && i < controllers.length; i++) {
+                for (int i = 0; i < _boundaries.length; i++) {
                   controllers[i].text = _boundaries[i].minMarks.toStringAsFixed(0);
                 }
               });
